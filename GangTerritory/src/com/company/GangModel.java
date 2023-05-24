@@ -35,7 +35,7 @@ public class GangModel {
         this.graffiti_rates = graffiti_rates;
         this.graffiti_decay_rates = graffiti_decay_rates;
 
-        this.city_map = readCityMapFromCSV(city_map_path);
+        //this.city_map = readCityMapFromCSV(city_map_path);
         this.hardness = calculateHardnessFromCityMap();
 
         this.area = lattice_row * lattice_column;
@@ -163,6 +163,109 @@ public class GangModel {
     }
 
     public void randomWalk(boolean save) {
+        if (save) saveAgentToFile();
+        for (int i = 0; i < lattice_row; i++) {
+            for (int j = 0; j < lattice_column; j++) {
+                double[] sum_of_opposing_gang_graffiti_densities_up =
+                        isAllowed(i-1, j)? sumOfOpposingGangGraffitiDensities(i-1, j) : new double[N_gang];
+                double[] sum_of_opposing_gang_graffiti_densities_down =
+                        isAllowed(i+1, j)? sumOfOpposingGangGraffitiDensities(i+1, j) : new double[N_gang];
+                double[] sum_of_opposing_gang_graffiti_densities_left =
+                        isAllowed(i, j-1)? sumOfOpposingGangGraffitiDensities(i, j-1) : new double[N_gang];
+                double[] sum_of_opposing_gang_graffiti_densities_right =
+                        isAllowed(i, j+1)? sumOfOpposingGangGraffitiDensities(i, j+1) : new double[N_gang];
+
+                for (int k = 0; k  < N_gang; k++) {
+                    double factor_up = isAllowed(i-1, j)?
+                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_up[k])
+                                    //- alpha * hardness[i-1][j]
+                            ) : 0;
+
+                    double factor_down = isAllowed(i+1, j)?
+                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_down[k])
+                                    //- alpha * hardness[i+1][j]
+                            ) : 0;
+
+                    double factor_left = isAllowed(i, j-1)?
+                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_left[k])
+                                    //- alpha * hardness[i][j-1]
+                            ) : 0;
+
+                    double factor_right = isAllowed(i, j+1)?
+                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_right[k])
+                                    //- alpha * hardness[i][j+1]
+                            ) : 0;
+
+                    double sum_of_factors = factor_up + factor_down + factor_left + factor_right;
+
+                    if (sum_of_factors == 0) {
+                        System.out.println("AGENT CAN'T MOVE ANYWHERE???");
+                        continue;
+                    }
+                    double probability_up = factor_up / sum_of_factors;
+                    double probability_down = factor_down / sum_of_factors;
+                    double probability_left = factor_left / sum_of_factors;
+                    double probability_right = factor_right / sum_of_factors;
+
+                    int agent_count = agent_lattice[i][j][k];
+                    for (int agent = 0; agent < agent_count; agent++) {
+                        double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
+                        if (rnd < probability_up) {
+                            agent_lattice[i][j][k]--;
+                            agent_lattice[i-1][j][k]++;
+                        }
+                        else if (rnd <= probability_up + probability_down) {
+                            agent_lattice[i][j][k]--;
+                            agent_lattice[i+1][j][k]++;
+                        }
+                        else if (rnd <= probability_up + probability_down + probability_left) {
+                            agent_lattice[i][j][k]--;
+                            agent_lattice[i][j-1][k]++;
+                        }
+                        else if (rnd <= probability_up + probability_down + probability_left + probability_right) {
+                            agent_lattice[i][j][k]--;
+                            agent_lattice[i][j+1][k]++;
+                        }
+                        else {
+                            System.out.println("ERROR WHERE AGENT CAN'T MOVE");
+                        }
+                    }
+                }
+
+
+            }
+        }
+
+
+    }
+
+    private double[] sumOfOpposingGangGraffitiDensities(int x, int y) {
+        double[] sum_of_opposing_gang_graffiti_densities = new double[N_gang];
+        for (int k = 0; k  < N_gang; k++) {
+            for (int opposing_gang = 0; opposing_gang  < N_gang; opposing_gang++) {
+                if (k == opposing_gang) continue;
+                sum_of_opposing_gang_graffiti_densities[k] += graffiti_lattice[x][y][opposing_gang] / area;
+            }
+        }
+        return sum_of_opposing_gang_graffiti_densities;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public void randomWalkOld(boolean save) {
         if (save) saveAgentToFile();
         for (int i = 0; i < lattice_row; i++) {
             for (int j = 0; j < lattice_column; j++) {
