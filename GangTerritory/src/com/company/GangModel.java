@@ -44,6 +44,7 @@ public class GangModel {
                 if (hardness[i][j] == 1.0) area--;
             }
         }
+        System.out.println(area);
 
         agent_lattice = new int[lattice_row][lattice_column][N_gang];
         graffiti_lattice = new double[lattice_row][lattice_column][N_gang];
@@ -123,13 +124,13 @@ public class GangModel {
             for (int j = 0; j < lattice_column; j++) {
                 for (int k = 0; k < N_gang; k++) {
                     graffiti_lattice[i][j][k] = graffiti_lattice[i][j][k] * (1 - graffiti_decay_rates[k]);
-                    double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
-                    if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k] += agent_lattice[i][j][k];
+                    //double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
+                    //if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k] += agent_lattice[i][j][k];
 
-//                    for (int count = 0; count < agent_lattice[i][j][k]; count++) {
-//                        double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
-//                        if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k]++;
-//                    }
+                    for (int count = 0; count < agent_lattice[i][j][k]; count++) {
+                        double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
+                        if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k]++;
+                    }
                 }
 
             }
@@ -164,6 +165,8 @@ public class GangModel {
 
     public void randomWalk(boolean save) {
         if (save) saveAgentToFile();
+        int[][][] new_agent_lattice = new int[lattice_row][lattice_column][N_gang];
+
         for (int i = 0; i < lattice_row; i++) {
             for (int j = 0; j < lattice_column; j++) {
                 double[] sum_of_opposing_gang_graffiti_densities_up =
@@ -176,23 +179,24 @@ public class GangModel {
                         isAllowed(i, j+1)? sumOfOpposingGangGraffitiDensities(i, j+1) : new double[N_gang];
 
                 for (int k = 0; k  < N_gang; k++) {
+                    double[][][] temp = graffiti_lattice;
                     double factor_up = isAllowed(i-1, j)?
-                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_up[k])
+                            Math.exp(((-1) * beta * area * sum_of_opposing_gang_graffiti_densities_up[k])
                                     //- alpha * hardness[i-1][j]
                             ) : 0;
 
                     double factor_down = isAllowed(i+1, j)?
-                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_down[k])
+                            Math.exp(((-1) * beta * area * sum_of_opposing_gang_graffiti_densities_down[k])
                                     //- alpha * hardness[i+1][j]
                             ) : 0;
 
                     double factor_left = isAllowed(i, j-1)?
-                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_left[k])
+                            Math.exp(((-1) * beta * area * sum_of_opposing_gang_graffiti_densities_left[k])
                                     //- alpha * hardness[i][j-1]
                             ) : 0;
 
                     double factor_right = isAllowed(i, j+1)?
-                            Math.exp(((-1) * beta * sum_of_opposing_gang_graffiti_densities_right[k])
+                            Math.exp(((-1) * beta * area * sum_of_opposing_gang_graffiti_densities_right[k])
                                     //- alpha * hardness[i][j+1]
                             ) : 0;
 
@@ -207,24 +211,20 @@ public class GangModel {
                     double probability_left = factor_left / sum_of_factors;
                     double probability_right = factor_right / sum_of_factors;
 
-                    int agent_count = agent_lattice[i][j][k];
-                    for (int agent = 0; agent < agent_count; agent++) {
+
+                    for (int agent = 0; agent < agent_lattice[i][j][k]; agent++) {
                         double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
                         if (rnd < probability_up) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i-1][j][k]++;
+                            new_agent_lattice[i-1][j][k]++;
                         }
                         else if (rnd <= probability_up + probability_down) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i+1][j][k]++;
+                            new_agent_lattice[i+1][j][k]++;
                         }
                         else if (rnd <= probability_up + probability_down + probability_left) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i][j-1][k]++;
+                            new_agent_lattice[i][j-1][k]++;
                         }
                         else if (rnd <= probability_up + probability_down + probability_left + probability_right) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i][j+1][k]++;
+                            new_agent_lattice[i][j+1][k]++;
                         }
                         else {
                             System.out.println("ERROR WHERE AGENT CAN'T MOVE");
@@ -236,7 +236,7 @@ public class GangModel {
             }
         }
 
-
+        agent_lattice = new_agent_lattice;
     }
 
     private double[] sumOfOpposingGangGraffitiDensities(int x, int y) {
@@ -244,7 +244,7 @@ public class GangModel {
         for (int k = 0; k  < N_gang; k++) {
             for (int opposing_gang = 0; opposing_gang  < N_gang; opposing_gang++) {
                 if (k == opposing_gang) continue;
-                sum_of_opposing_gang_graffiti_densities[k] += graffiti_lattice[x][y][opposing_gang] / area;
+                sum_of_opposing_gang_graffiti_densities[k] += graffiti_lattice[x][y][opposing_gang]; /// area;
             }
         }
         return sum_of_opposing_gang_graffiti_densities;
