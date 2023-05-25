@@ -126,11 +126,11 @@ public class GangModel {
                     graffiti_lattice[i][j][k] = graffiti_lattice[i][j][k] * (1 - graffiti_decay_rates[k]);
                     //double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
                     //if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k] += agent_lattice[i][j][k];
-
-                    for (int count = 0; count < agent_lattice[i][j][k]; count++) {
-                        double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
-                        if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k]++;
-                    }
+                    graffiti_lattice[i][j][k] += agent_lattice[i][j][k] * graffiti_rates[k];
+//                    for (int count = 0; count < agent_lattice[i][j][k]; count++) {
+//                        double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
+//                        if (rnd <= graffiti_rates[k]) graffiti_lattice[i][j][k]++;
+//                    }
                 }
 
             }
