@@ -18,14 +18,16 @@ public class Main {
         graffiti_rates[2] = 0.5;
         GangModel gm =
                 new GangModel(100, 100, 3,  gang_size,
-                        3*Math.pow(10,-5)  , 4, graffiti_rates, graffiti_rates, "/Users/damlaortac/Desktop/GangTerritory/GangTerritory/map_export/map_70.txt");
+                        3*Math.pow(10,-5)  , 4, graffiti_rates, graffiti_rates, "/Users/damlaortac/Desktop/GangTerritory/GangTerritory/100x100/100x100_r.txt");
         //3*Math.pow(10,-5)
         //0.0000065
-        int time = 10000;
+        int time = 100000;
         GangModel.saveToFile("t", time + "");
         GangModel.saveToFile("dt", "1");
         int number_of_selected_t = 10;
         String selected_t = "";
+
+
 
         for (int i = 0; i < time; i++) {
             boolean flag = false;
@@ -33,6 +35,7 @@ public class Main {
                 selected_t +=  (i * time / number_of_selected_t) + "\n";
                 flag = true;
             }
+            gm.calculateOrderParameter();
             gm.produceAndDecayGraffiti(flag);
             gm.randomWalk(flag);
             if (i%1000==0) System.out.println(i);

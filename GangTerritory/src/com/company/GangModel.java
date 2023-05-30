@@ -23,11 +23,13 @@ public class GangModel {
     private double alpha;
     private double[] graffiti_rates;
     private double[] graffiti_decay_rates;
+    private int obstacle_column_index;
 
 
     public GangModel(int lattice_row, int lattice_column, int N_gang, int[] agent_sizes, double beta, double alpha, double[] graffiti_rates, double[] graffiti_decay_rates, String city_map_path) {
         this.lattice_row = lattice_row;
         this.lattice_column = lattice_column;
+        this.obstacle_column_index = lattice_column / 2;
         this.N_gang = N_gang;
         this.agent_sizes = agent_sizes;
         this.beta = beta;
@@ -109,17 +111,17 @@ public class GangModel {
 
     public double[][] calculateHardnessFromCityMap() {
         double[][] hardness_from_city_map = new double[lattice_row][lattice_column];
+        //return hardness_from_city_map;
+        for (int i = 0; i < lattice_row; i++) {
+            for (int j = 0; j < lattice_column; j++) {
+                Pixel current_pixel = city_map[i][j];
+                if (current_pixel.getR() == 255 && current_pixel.getG() == 255 && current_pixel.getB() == 255) {
+                    hardness_from_city_map[i][j] = 0.0;
+                }
+                else hardness_from_city_map[i][j] = 1.0;
+            }
+        }
         return hardness_from_city_map;
-//        for (int i = 0; i < lattice_row; i++) {
-//            for (int j = 0; j < lattice_column; j++) {
-//                Pixel current_pixel = city_map[i][j];
-//                if (current_pixel.getR() == 255 && current_pixel.getG() == 255 && current_pixel.getB() == 255) {
-//                    hardness_from_city_map[i][j] = 0.0;
-//                }
-//                else hardness_from_city_map[i][j] = 0.8;
-//            }
-//        }
-//        return hardness_from_city_map;
     }
 
     public void produceAndDecayGraffiti(boolean save) {
@@ -127,7 +129,7 @@ public class GangModel {
         double hamiltonian_sum = 0;
         for (int i = 0; i < lattice_row; i++) {
             for (int j = 0; j < lattice_column; j++) {
-                hamiltonian_sum += calculateHamiltonian2Gangs(i, j);
+                //hamiltonian_sum += calculateHamiltonian2Gangs(i, j);
                 for (int k = 0; k < N_gang; k++) {
                     graffiti_lattice[i][j][k] = graffiti_lattice[i][j][k] * (1 - graffiti_decay_rates[k]);
                     //double rnd = ThreadLocalRandom.current().nextDouble(0, 1);
@@ -141,10 +143,10 @@ public class GangModel {
 
             }
         }
-        hamiltonian_sum = Math.pow((1 / (2 * 100 * 100000)), 2) * hamiltonian_sum;
-        //hamiltonian_sum = 0.25 * Math.pow(10, -6) * hamiltonian_sum;
-        System.out.println(hamiltonian_sum);
-        saveToFile("E_avg", hamiltonian_sum + "");
+//        hamiltonian_sum = Math.pow((1 / (2 * 100 * 100000)), 2) * hamiltonian_sum;
+//        //hamiltonian_sum = 0.25 * Math.pow(10, -6) * hamiltonian_sum;
+//        System.out.println(hamiltonian_sum);
+//        saveToFile("E_avg", hamiltonian_sum + "");
     }
 
     private void saveGraffitiToFile() {
@@ -193,22 +195,22 @@ public class GangModel {
                     double[][][] temp = graffiti_lattice;
                     double factor_up = isAllowed(i-1, j)?
                             Math.exp(((-1) * (beta * area) * (sum_of_opposing_gang_graffiti_densities_up[k]))
-                                    //- alpha * hardness[i-1][j]
+                                    - alpha * hardness[i-1][j]
                             ) : 0;
 
                     double factor_down = isAllowed(i+1, j)?
                             Math.exp(((-1) * (beta *  area) * (sum_of_opposing_gang_graffiti_densities_down[k]))
-                                    //- alpha * hardness[i+1][j]
+                                    - alpha * hardness[i+1][j]
                             ) : 0;
 
                     double factor_left = isAllowed(i, j-1)?
                             Math.exp(((-1) * (beta *  area) * (sum_of_opposing_gang_graffiti_densities_left[k]))
-                                    //- alpha * hardness[i][j-1]
+                                    - alpha * hardness[i][j-1]
                             ) : 0;
 
                     double factor_right = isAllowed(i, j+1)?
                             Math.exp(((-1) * (beta *  area) * (sum_of_opposing_gang_graffiti_densities_right[k]))
-                                    //- alpha * hardness[i][j+1]
+                                    - alpha * hardness[i][j+1]
                             ) : 0;
 
                     double sum_of_factors = factor_up + factor_down + factor_left + factor_right;
@@ -285,8 +287,16 @@ public class GangModel {
 //        return current_cell * (up + down + left + right);
     }
 
-    public void calculateHamiltonian(int i, int j, int k) {
+    public void calculateOrderParameter() {
+        int left_index = (obstacle_column_index - 1);
+        int right_index = (obstacle_column_index + 1);
+        double sum = 0.0;
+        for (int i = 0; i < lattice_row; i++) {
+            sum += (agent_lattice[i][left_index][0] * area - agent_lattice[i][left_index][1] * area)
+                    - (agent_lattice[i][right_index][0] * area - agent_lattice[i][right_index][1] * area);
+        }
 
+        saveToFile("order_param", sum + "");
 
     }
 
