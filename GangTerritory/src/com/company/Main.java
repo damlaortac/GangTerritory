@@ -50,7 +50,7 @@ public class Main {
         }
 
         for (int i = 0; i < time; i++) {
-            GangModel.saveToFile("order_parameter_averaged", order_parameter_values[i]/100 + "");
+            GangModel.saveToFile("order_parameter_averaged", order_parameter_values[i]/10 + "");
         }
 
 
