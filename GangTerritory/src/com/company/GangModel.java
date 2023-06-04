@@ -66,12 +66,12 @@ public class GangModel {
                 agent_lattice[x][y][i]++;
             }
         }
-        saveToFile("row", lattice_row + "");
-        saveToFile("column", lattice_column + "");
-        saveToFile("beta", beta + "");
-        for (int k = 0; k < N_gang; k++) {
-            saveToFile("N_" + k, agent_sizes[k] + "");
-        }
+        //saveToFile("row", lattice_row + "");
+        //saveToFile("column", lattice_column + "");
+        //saveToFile("beta", beta + "");
+//        for (int k = 0; k < N_gang; k++) {
+//            saveToFile("N_" + k, agent_sizes[k] + "");
+//        }
     }
 
     public static void saveToFile(String file_name, String content) {
@@ -125,7 +125,7 @@ public class GangModel {
     }
 
     public void produceAndDecayGraffiti(boolean save) {
-        if (save) saveGraffitiToFile();
+        //if (save) saveGraffitiToFile();
         double hamiltonian_sum = 0;
         for (int i = 0; i < lattice_row; i++) {
             for (int j = 0; j < lattice_column; j++) {
@@ -176,7 +176,7 @@ public class GangModel {
     }
 
     public void randomWalk(boolean save) {
-        if (save) saveAgentToFile();
+        //if (save) saveAgentToFile();
         int[][][] new_agent_lattice = new int[lattice_row][lattice_column][N_gang];
 
         for (int i = 0; i < lattice_row; i++) {
@@ -287,7 +287,7 @@ public class GangModel {
 //        return current_cell * (up + down + left + right);
     }
 
-    public void calculateOrderParameter() {
+    public double calculateOrderParameter() {
         int left_index = (obstacle_column_index - 1);
         int right_index = (obstacle_column_index + 1);
         double sum = 0.0;
@@ -296,7 +296,8 @@ public class GangModel {
                     - (agent_lattice[i][right_index][0] * area - agent_lattice[i][right_index][1] * area);
         }
 
-        saveToFile("order_param", sum + "");
+        //saveToFile("order_param", sum + "");
+        return sum;
 
     }
 
