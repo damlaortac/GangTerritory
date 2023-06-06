@@ -4,11 +4,14 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class GangModel {
+public class GangModel implements Runnable{
     private int[][][] agent_lattice;
     private double[][][] graffiti_lattice;
     private Pixel[][] city_map;
@@ -25,6 +28,7 @@ public class GangModel {
     private double[] graffiti_decay_rates;
     private int obstacle_column_index;
 
+    private UUID ID;
 
     public GangModel(int lattice_row, int lattice_column, int N_gang, int[] agent_sizes, double beta, double alpha, double[] graffiti_rates, double[] graffiti_decay_rates, String city_map_path) {
         this.lattice_row = lattice_row;
@@ -36,6 +40,13 @@ public class GangModel {
         this.alpha = alpha;
         this.graffiti_rates = graffiti_rates;
         this.graffiti_decay_rates = graffiti_decay_rates;
+        this.ID = UUID.randomUUID();
+
+        try {
+            Files.createDirectory(Path.of("Output/"+ID.toString()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         this.city_map = readCityMapFromCSV(city_map_path);
 
@@ -49,7 +60,7 @@ public class GangModel {
                 if (hardness[i][j] == 1.0) area--;
             }
         }
-        System.out.println(area);
+        //System.out.println(area);
 
         agent_lattice = new int[lattice_row][lattice_column][N_gang];
         graffiti_lattice = new double[lattice_row][lattice_column][N_gang];
@@ -74,8 +85,8 @@ public class GangModel {
 //        }
     }
 
-    public static void saveToFile(String file_name, String content) {
-        File file = new File("Output/" + file_name + ".txt");
+    public void saveToFile(String file_name, String content) {
+        File file = new File("Output/" + this.ID.toString() + "/" + file_name + ".txt");
         try {
             file.createNewFile();
             FileWriter fos = new FileWriter(file, true);
@@ -287,103 +298,19 @@ public class GangModel {
 //        return current_cell * (up + down + left + right);
     }
 
-    public double calculateOrderParameter() {
+    public void calculateOrderParameter() {
         int left_index = (obstacle_column_index - 1);
         int right_index = (obstacle_column_index + 1);
-        double sum = 0.0;
+        double sum_minus = 0.0;
+        double sum_mult = 0.0;
         for (int i = 0; i < lattice_row; i++) {
-            sum += (agent_lattice[i][left_index][0] * area - agent_lattice[i][left_index][1] * area)
-                    - (agent_lattice[i][right_index][0] * area - agent_lattice[i][right_index][1] * area);
+            sum_minus += Math.abs((agent_lattice[i][left_index][0] - agent_lattice[i][left_index][1])
+                    - (agent_lattice[i][right_index][0] - agent_lattice[i][right_index][1]));
+            sum_mult += (agent_lattice[i][left_index][0] - agent_lattice[i][left_index][1])
+                    * (agent_lattice[i][right_index][0] - agent_lattice[i][right_index][1]);
         }
-
-        //saveToFile("order_param", sum + "");
-        return sum;
-
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-    public void randomWalkOld(boolean save) {
-        if (save) saveAgentToFile();
-        for (int i = 0; i < lattice_row; i++) {
-            for (int j = 0; j < lattice_column; j++) {
-                double[] ePowerBetaDensityUp = new double[N_gang];
-                double[] ePowerBetaDensityDown = new double[N_gang];
-                double[] ePowerBetaDensityLeft = new double[N_gang];
-                double[] ePowerBetaDensityRight = new double[N_gang];
-                for (int k = 0; k < N_gang; k++) {
-                    ePowerBetaDensityUp[k] = Math.exp( -1 * beta *
-                            (isAllowed(i, j - 1) ? graffiti_lattice[i][j - 1][k] * area : 0));
-                    ePowerBetaDensityDown[k] = Math.exp( -1 * beta *
-                            (isAllowed(i, j + 1) ? graffiti_lattice[i][j + 1][k] * area : 0));
-                    ePowerBetaDensityLeft[k] = Math.exp( -1 * beta *
-                            (isAllowed(i - 1, j) ? graffiti_lattice[i - 1][j][k] * area : 0));
-                    ePowerBetaDensityRight[k] = Math.exp( -1 * beta *
-                            (isAllowed(i + 1, j) ? graffiti_lattice[i + 1][j][k] * area : 0));
-                }
-                for (int k = 0; k < N_gang; k++) {
-                    double sum_of_opposing_gang_graffitti_up = 0;
-                    double sum_of_opposing_gang_graffitti_down = 0;
-                    double sum_of_opposing_gang_graffitti_left = 0;
-                    double sum_of_opposing_gang_graffitti_right = 0;
-                    for (int l = 0; l < N_gang; l++) {
-                        if (k == l) continue;
-                        sum_of_opposing_gang_graffitti_up += ePowerBetaDensityUp[l];
-                        sum_of_opposing_gang_graffitti_down += ePowerBetaDensityDown[l];
-                        sum_of_opposing_gang_graffitti_left += ePowerBetaDensityLeft[l];
-                        sum_of_opposing_gang_graffitti_right += ePowerBetaDensityRight[l];
-                    }
-                    double sum_of_opposing_gang_graffitti_all =
-                            sum_of_opposing_gang_graffitti_up +
-                            sum_of_opposing_gang_graffitti_down +
-                            sum_of_opposing_gang_graffitti_left +
-                            sum_of_opposing_gang_graffitti_right;
-
-                    for (int count = 0; count < agent_lattice[i][j][k]; count++) {
-                        double probabilityUp = isAllowed(i, j-1)? sum_of_opposing_gang_graffitti_up / sum_of_opposing_gang_graffitti_all : 0;
-                        double probabilityDown = isAllowed(i, j+1)? sum_of_opposing_gang_graffitti_down / sum_of_opposing_gang_graffitti_all : 0;
-                        double probabilityLeft = isAllowed(i-1, j)? sum_of_opposing_gang_graffitti_left / sum_of_opposing_gang_graffitti_all : 0;
-                        double probabilityRight = isAllowed(i+1, j)? sum_of_opposing_gang_graffitti_right / sum_of_opposing_gang_graffitti_all : 0;
-                        double rnd = 0;
-                        if (probabilityUp + probabilityDown + probabilityLeft + probabilityRight >= 0) {
-                            rnd = ThreadLocalRandom.current().nextDouble(0, probabilityUp + probabilityDown + probabilityLeft + probabilityRight);
-                        }
-
-                        if (rnd < probabilityUp) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i][j - 1][k]++;
-                        }
-                        else if (rnd < probabilityUp + probabilityDown) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i][j + 1][k]++;
-                        }
-                        else if (rnd < probabilityUp + probabilityDown + probabilityLeft) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i - 1][j][k]++;
-                        }
-                        else if (rnd < probabilityUp + probabilityDown + probabilityLeft + probabilityRight) {
-                            agent_lattice[i][j][k]--;
-                            agent_lattice[i + 1][j][k]++;
-                        }
-                        else {
-                            System.out.println("ERROR WHERE AGENT CAN'T MOVE");
-                        }
-                    }
-                }
-
-            }
-        }
-
+        saveToFile("order_param_minus", sum_minus + "");
+        saveToFile("order_param_mult", sum_mult + "");
     }
 
     private void saveAgentToFile() {
@@ -416,5 +343,18 @@ public class GangModel {
         if (x < 0 || y < 0 || x >= lattice_row || y >= lattice_column) return false;
         else if (hardness[x][y] == 1.0) return false;
         else return true;
+    }
+
+    @Override
+    public void run() {
+        int time = 10000;
+        int number_of_selected_t = 10;
+
+        for (int i = 0; i < time; i++) {
+            this.calculateOrderParameter();
+            this.produceAndDecayGraffiti(false);
+            this.randomWalk(false);
+            if (i%1000==0) System.out.println(i + " from " + ID.toString());
+        }
     }
 }
